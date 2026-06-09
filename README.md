@@ -7,18 +7,31 @@ Você se movimenta no W, S, D e A, no jogo você precisa pegar uma das 3 armas d
 
 Cada símbolo tem seu significado, os seus significados são:
 ^ < > v:  Jogador (direção em que olha);
+
 *: Parede (intransponivel);
+
 #: Espinho (mata ao tocar!);
+
 k: Caixa (destrutível com ataque);
+
 O: Botao (interaja com I);
+
 D: Porta fechada;
+
 @: Chave (interaja com I para coletar);
+
 =: Porta aberta;
+
 L: Escada (próxima fase);
+
 X: Monstro Tipo 1 (movimento aleatório);
+
 Y: Monstro Tipo 2 (persegue você);
+
 Z: Boss Final;
+
 N: NPC (fale com I);
+
 M: Entrada da masmorra;
 
 Sobre o uso da IA, usamos principalmente para ajudar com o jogo no geral e para entendermos o código do jogo.
