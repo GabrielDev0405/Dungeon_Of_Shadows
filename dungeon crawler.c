@@ -1,14 +1,3 @@
-
-/*
- * ═══════════════════════════════════════════════════════
- * DUNGEON OF SHADOWS — Dungeon Crawler (Projeto Acadêmico)
- * Implementado conforme lauda do projeto
- *
- * Compilar: gcc -o dungeon dungeon_crawler.c
- * Executar: ./dungeon
- * ═══════════════════════════════════════════════════════
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -91,6 +80,8 @@ typedef struct {
     int tipo;        /* 1=X, 2=Y, 3=Z */
     int vivo;
     int boss_timer;
+    int vidas;
+    int move_timer;
 } Monstro;
 
 typedef struct {
@@ -147,7 +138,13 @@ int escada_liberada;
    UTILITÁRIOS
    ══════════════════════════════════════════════ */
 
-void limpar_tela(void) { printf("\033[2J\033[H"); }
+void limpar_tela(void) {
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
 
 void aguardar_tecla(void) {
     printf("\n  [ Pressione qualquer tecla para continuar... ]");
@@ -403,7 +400,7 @@ static const char *MAPA_ANDAR1[F1_H] = {
     "*..@.....*",
     "*..kk....*",
     "*........*",
-    "*...D....*",
+    "****D*****",
     "*........*",
     "*........*",
     "*.......L*",
@@ -416,14 +413,14 @@ static const char *MAPA_ANDAR2[F2_H] = {
     "*....@........*",
     "*..###........*",
     "*.............*",
-    "*.....D.......*",
+    "******D********",
     "*.............*",
     "*...O.........*",
     "*.............*",
     "*.....@.......*",
     "*.............*",
-    "*......D......*",
-    "*..###........*",
+    "*******D*******",
+    "*.............*",
     "*.............*",
     "*...........L.*",
     "***************"
@@ -432,29 +429,29 @@ static const char *MAPA_ANDAR2[F2_H] = {
 /* ANDAR 3 — 25x25: 3 chaves, 3 portas, monstros Y, boss Z */
 static const char *MAPA_ANDAR3[F3_H] = {
     "*************************",
-    "*....@...................*",
-    "*........................*",
-    "*...***......***.........*",
-    "*...*.D......D.*.........*",
-    "*...*..........*.....@...*",
-    "*........................*",
-    "*....###.....###.........*",
-    "*........................*",
-    "*........................*",
-    "*............Z...........*",
-    "*........................*",
-    "*........................*",
-    "*....###.....###.........*",
-    "*........................*",
-    "*...*...............*....*",
-    "*...*.D............D.*...*",
-    "*...*..............*.@...*",
-    "*...***............***...*",
-    "*........................*",
-    "*........................*",
-    "*........................*",
-    "*........................*",
-    "*........................*",
+"*....@..................*",
+    "*.......................*",
+    "*.......................*",
+    "************D************",
+    "*...................k@..*",
+    "*...................k...*",
+    "*.......................*",
+    "*.......................*",
+    "*.......................*",
+    "*.X....................Y*",
+    "*************D***********",
+    "*..Y....................*",
+    "*...................X...*",
+    "*...##..................*",
+    "*...@#.......Y..........*",
+    "*...##..................*",
+    "*************D***********",
+    "*.......................*",
+    "*.......................*",
+    "*.......................*",
+    "*.......................*",
+    "*.......................*",
+    "*.Z.....................*",
     "*************************"
 };
 
@@ -482,6 +479,8 @@ void carregar_mapa_str(const char **linhas, int h, int w) {
                     monstros[n_monstros].tipo = (c=='X') ? 1 : (c=='Y') ? 2 : 3;
                     monstros[n_monstros].vivo = 1;
                     monstros[n_monstros].boss_timer = 0;
+                    monstros[n_monstros].vidas = (c == 'Z') ? 5 : 3;
+                    monstros[n_monstros].move_timer = 0;
                     n_monstros++;
                 }
                 c = '.';
@@ -560,16 +559,7 @@ void iniciar_andar3(void) {
     jogador.x = 2; jogador.y = 1;
     jogador.direcao = DIR_BAIXO;
     int pos[][2] = {{3,7},{20,7},{3,15},{20,15}};
-    for (int i = 0; i < 4 && n_monstros < MAX_MONSTERS; i++) {
-        if (tile_em(pos[i][0], pos[i][1]) != '*') {
-            monstros[n_monstros].x = pos[i][0];
-            monstros[n_monstros].y = pos[i][1];
-            monstros[n_monstros].tipo = 2;
-            monstros[n_monstros].vivo = 1;
-            monstros[n_monstros].boss_timer = 0;
-            n_monstros++;
-        }
-    }
+   
     escada_liberada = 0;
 }
 
@@ -635,7 +625,11 @@ void aplicar_ataque_cell(int x, int y) {
         }
     }
     int mi = monstro_em(x, y);
-    if (mi >= 0) { monstros[mi].vivo = 0; }
+if (mi >= 0) {
+    monstros[mi].vidas--;
+    if (monstros[mi].vidas <= 0)
+        monstros[mi].vivo = 0;
+}
 }
 
 void verificar_vitoria_boss(void) {
@@ -659,7 +653,7 @@ void atacar(void) {
     }
     int px = jogador.x, py = jogador.y, dir = jogador.direcao;
     int fx=0,fy=0,lx=0,ly=0;
-    
+   
     switch (dir) {
         case DIR_CIMA:     fy=-1; lx=1; break;
         case DIR_BAIXO:    fy= 1; lx=1; break;
@@ -726,7 +720,7 @@ void interagir(void) {
                     mapa[iy][ix] = '='; mapa_base[iy][ix] = '=';
                     chaves_coletadas--;
                     printf("  Porta aberta!\n");
-                    
+                   
                     if (fase_atual == FASE_ANDAR1 || fase_atual == FASE_ANDAR2) {
                         int todas = 1;
                         for (int j=0; j<n_portas; j++)
@@ -836,37 +830,31 @@ void mover_monstros(void) {
             nx=mx+ddx[d]; ny=my+ddy[d];
 
         } else if (monstros[i].tipo == 2) {
-            int dx=jogador.x-mx, dy=jogador.y-my;
-            if (abs_val(dx) >= abs_val(dy))
-                nx = mx + (dx>0 ? 1 : -1);
-            else
-                ny = my + (dy>0 ? 1 : -1);
-
-        } else if (monstros[i].tipo == 3) {
+    monstros[i].move_timer++;
+    if (monstros[i].move_timer % 2 != 0) continue;  
+    int dx=jogador.x-mx, dy=jogador.y-my;
+    if (abs_val(dx) >= abs_val(dy))
+        nx = mx + (dx>0 ? 1 : -1);
+    else
+        ny = my + (dy>0 ? 1 : -1); }else if (monstros[i].tipo == 3) {
             monstros[i].boss_timer++;
+           
+           
+            if (monstros[i].boss_timer > 8) {
+                monstros[i].boss_timer = 1;
+            }
+
             int bt = monstros[i].boss_timer;
+           
+           
             if (bt <= 4) {
-                int dx=jogador.x-mx;
-                if (dx!=0) nx=mx+(dx>0?1:-1);
-            } else if (bt <= 8) {
-                int dy=jogador.y-my;
-                if (dy!=0) ny=my+(dy>0?1:-1);
-            } else {
-                monstros[i].boss_timer = 0;
-                for (int tentativa=0; tentativa<10; tentativa++) {
-                    int tx=jogador.x+rand_range(-4,4);
-                    int ty=jogador.y+rand_range(-4,4);
-                    if (tx < 1) tx = 1;
-                    if (tx >= mapa_w-1) tx = mapa_w-2;
-                    if (ty < 1) ty = 1;
-                    if (ty >= mapa_h-1) ty = mapa_h-2;
-                    if (!eh_solido(tile_em(tx,ty)) && monstro_em(tx,ty)<0
-                        && tile_em(tx,ty)!='#') {
-                        monstros[i].x=tx; monstros[i].y=ty; break;
-                    }
-                }
-                verificar_contato_monstros();
-                continue;
+                int dx = jogador.x - mx;
+                if (dx != 0) nx = mx + (dx > 0 ? 1 : -1);
+            }
+           
+            else {
+                int dy = jogador.y - my;
+                if (dy != 0) ny = my + (dy > 0 ? 1 : -1);
             }
         }
 
@@ -917,7 +905,7 @@ void loop_fase(void) {
 
         buf = _getch();
         int move = processar_input(buf);
-        
+       
         if (move && fase_atual != FASE_GAMEOVER && fase_atual != FASE_VITORIA
                  && fase_atual != FASE_MENU)
             mover_monstros();
